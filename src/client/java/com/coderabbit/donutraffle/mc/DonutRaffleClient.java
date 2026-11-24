@@ -18,6 +18,7 @@ import net.minecraft.resources.Identifier;
 /** 1.21.11 entrypoint: registers the key, HUD, chat hook and /raffle, then hands off to shared code. */
 public class DonutRaffleClient implements ClientModInitializer {
 	private static KeyMapping menuKey;
+	private static KeyMapping toggleKey;
 
 	@Override
 	public void onInitializeClient() {
@@ -25,15 +26,23 @@ public class DonutRaffleClient implements ClientModInitializer {
 
 		menuKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
 				"key.donutraffle.menu", InputConstants.Type.KEYSYM, InputConstants.KEY_H, KeyMapping.Category.MISC));
+		// Unbound by default (set it in Controls); /raffle on|off and the menu button also work.
+		toggleKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+				"key.donutraffle.toggle", InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MISC));
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			boolean pressed = false;
+			boolean toggle = false;
 
 			while (menuKey.consumeClick()) {
 				pressed = true;
 			}
 
-			DonutRaffle.tick(pressed);
+			while (toggleKey.consumeClick()) {
+				toggle = !toggle;
+			}
+
+			DonutRaffle.tick(pressed, toggle);
 		});
 
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(DonutRaffle.MOD_ID, "jackpot"),

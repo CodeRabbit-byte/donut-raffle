@@ -20,7 +20,7 @@ public abstract class BaseScreen extends Screen {
 
 	@Override
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {
-		g.fill(0, 0, width, height, 0xC8000000);
+		g.fill(0, 0, width, height, backgroundColor());
 	}
 
 	@Override
@@ -29,6 +29,11 @@ public abstract class BaseScreen extends Screen {
 		drawBehind(gfx, mouseX, mouseY);
 		super.render(g, mouseX, mouseY, delta);
 		drawFront(gfx, mouseX, mouseY);
+	}
+
+	/** The dim drawn over the world behind this screen. */
+	protected int backgroundColor() {
+		return 0xC8000000;
 	}
 
 	@Override

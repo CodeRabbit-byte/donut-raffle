@@ -36,8 +36,24 @@ public final class RaffleCommands {
 					return 1;
 				})
 				.then(RaffleCommands.<S>lit("status").executes(ctx -> status()))
+				.then(RaffleCommands.<S>lit("on").executes(ctx -> {
+					DonutRaffle.setEnabled(true);
+					return 1;
+				}))
+				.then(RaffleCommands.<S>lit("off").executes(ctx -> {
+					DonutRaffle.setEnabled(false);
+					return 1;
+				}))
+				.then(RaffleCommands.<S>lit("toggle").executes(ctx -> {
+					DonutRaffle.setEnabled(!DonutRaffle.get().enabled);
+					return 1;
+				}))
 				.then(RaffleCommands.<S>lit("settings").executes(ctx -> {
 					DonutRaffle.open(new SettingsScreen(null));
+					return 1;
+				}))
+				.then(RaffleCommands.<S>lit("hud").executes(ctx -> {
+					DonutRaffle.open(new HudEditScreen(null));
 					return 1;
 				}))
 				.then(RaffleCommands.<S>lit("price")
@@ -46,9 +62,6 @@ public final class RaffleCommands {
 				.then(RaffleCommands.<S>lit("payout")
 						.then(RaffleCommands.<S, String>arg("percent", StringArgumentType.greedyString())
 								.executes(ctx -> payout(StringArgumentType.getString(ctx, "percent")))))
-				.then(RaffleCommands.<S>lit("worth")
-						.then(RaffleCommands.<S, String>arg("amount", StringArgumentType.greedyString())
-								.executes(ctx -> worth(StringArgumentType.getString(ctx, "amount")))))
 				.then(RaffleCommands.<S>lit("tax")
 						.then(RaffleCommands.<S, String>arg("percent", StringArgumentType.greedyString())
 								.executes(ctx -> tax(StringArgumentType.getString(ctx, "percent")))))
@@ -162,35 +175,9 @@ public final class RaffleCommands {
 		}
 
 		r.winnerPercent = w;
-		r.applyPrizeValue();
 		DonutRaffle.changed();
 		DonutRaffle.info(Component.literal("Winner gets " + DonutRaffle.pct(w) + " of the pot (" + Money.times(r.multiple())
 				+ " with " + r.spots + " spots). A full pot pays " + Money.format(Raffle.payout(r.fullPot(), r.winnerPercent, r.taxPercent)) + "."));
-		return 1;
-	}
-
-	/** "/raffle worth 81m": the spot price follows from what the prize is worth. "off" stops that. */
-	private static int worth(String text) {
-		Raffle r = DonutRaffle.get();
-
-		if (text.trim().equalsIgnoreCase("off")) {
-			r.prizeValue = 0;
-			DonutRaffle.changed();
-			DonutRaffle.info(Component.literal("Prize worth off. The spot price stays " + Money.format(r.price) + "."));
-			return 1;
-		}
-
-		double v = Money.parse(text);
-
-		if (v <= 0) {
-			return fail("Not an amount: " + text + " (try 81m, or off)");
-		}
-
-		r.prizeValue = v;
-		r.applyPrizeValue();
-		DonutRaffle.changed();
-		DonutRaffle.info(Component.literal(Prizes.name(r) + " worth " + Money.format(v) + ": " + r.spots + " spots at "
-				+ Money.format(r.price) + ", winner's " + DonutRaffle.pct(r.winnerPercent) + " of a full pot = " + Money.format(v) + "."));
 		return 1;
 	}
 

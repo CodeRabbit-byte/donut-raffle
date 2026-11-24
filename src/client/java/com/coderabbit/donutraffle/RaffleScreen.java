@@ -30,11 +30,6 @@ public class RaffleScreen extends BaseScreen {
 	private String nameText = "";
 	private String priceText;
 	private String winText;
-	private String worthText;
-	private EditBox priceBox;
-	private EditBox worthBox;
-	/** True while one box fills in another, so their responders don't undo each other. */
-	private boolean syncing;
 	private int columnsTop;
 	private float barScale = 1;
 	private int extrasShown;
@@ -103,34 +98,6 @@ public class RaffleScreen extends BaseScreen {
 		addRenderableWidget(add);
 		y += ROW;
 
-		if (worthText == null) {
-			worthText = r.prizeValue > 0 ? Money.formatInput(r.prizeValue) : "";
-		}
-
-		// Type what the prize is worth and the spot price is worked out from it.
-		EditBox worthBox = new EditBox(font, lx + 20, y, 92, 20, Component.literal("Prize worth"));
-		worthBox.setMaxLength(20);
-		worthBox.setHint(Component.literal("worth, e.g. 81m").withStyle(ChatFormatting.DARK_GRAY));
-		worthBox.setValue(worthText);
-		worthBox.setResponder(v -> {
-			worthText = v;
-
-			if (syncing) {
-				return;
-			}
-
-			Raffle rr = r();
-			double w = v.isBlank() ? 0 : Money.parse(v);
-
-			if (w >= 0 && w != rr.prizeValue) {
-				rr.prizeValue = w;
-				rr.applyPrizeValue();
-				setText(this.priceBox, Money.formatInput(rr.price));
-				changedHere();
-			}
-		});
-		addRenderableWidget(worthBox);
-		this.worthBox = worthBox;
 		addRenderableWidget(Button.builder(Component.literal("Change prize"), b -> Mc.setScreen(new ItemPickerScreen(this)))
 				.bounds(lx + 116, y, COL - 116, 20)
 				.build());
@@ -153,16 +120,12 @@ public class RaffleScreen extends BaseScreen {
 			priceText = v;
 			double p = Money.parse(v);
 
-			if (!syncing && p > 0 && p != r().price) {
-				// A price typed by hand stops following the prize worth.
+			if (p > 0 && p != r().price) {
 				r().price = p;
-				r().prizeValue = 0;
-				setText(this.worthBox, "");
 				changedHere();
 			}
 		});
 		addRenderableWidget(priceBox);
-		this.priceBox = priceBox;
 		EditBox winBox = new EditBox(font, lx + 146, y, COL - 146, 20, Component.literal("Winner gets % of the pot"));
 		winBox.setMaxLength(8);
 		winBox.setHint(Component.literal("90").withStyle(ChatFormatting.DARK_GRAY));
@@ -173,12 +136,6 @@ public class RaffleScreen extends BaseScreen {
 
 			if (w >= 0 && w != r().winnerPercent) {
 				r().winnerPercent = w;
-
-				if (r().prizeValue > 0) {
-					r().applyPrizeValue();
-					setText(this.priceBox, Money.formatInput(r().price));
-				}
-
 				changedHere();
 			}
 		});
@@ -246,7 +203,7 @@ public class RaffleScreen extends BaseScreen {
 					DonutRaffle.changed();
 					rebuildWidgets();
 				})
-				.bounds(cx - 155, bottom + 2, 100, 20)
+				.bounds(cx - 155, bottom + 2, 82, 20)
 				.build();
 		toggle.active = !r.paid;
 		addRenderableWidget(toggle);
@@ -256,10 +213,17 @@ public class RaffleScreen extends BaseScreen {
 					selected = -1;
 					rebuildWidgets();
 				})
-				.bounds(cx - 50, bottom + 2, 100, 20)
+				.bounds(cx - 70, bottom + 2, 76, 20)
+				.build());
+		addRenderableWidget(Button.builder(Component.literal(r.enabled ? "Raffle: ON" : "Raffle: OFF")
+								.withStyle(r.enabled ? ChatFormatting.GREEN : ChatFormatting.RED), b -> {
+					DonutRaffle.setEnabled(!r().enabled);
+					rebuildWidgets();
+				})
+				.bounds(cx + 10, bottom + 2, 80, 20)
 				.build());
 		addRenderableWidget(Button.builder(Component.literal("Done"), b -> onClose())
-				.bounds(cx + 55, bottom + 2, 100, 20)
+				.bounds(cx + 94, bottom + 2, 61, 20)
 				.build());
 	}
 
@@ -280,29 +244,12 @@ public class RaffleScreen extends BaseScreen {
 				winText = null;
 			}
 
-			if (worthText != null && (worthText.isBlank() ? 0 : Money.parse(worthText)) != r.prizeValue) {
-				worthText = null;
-			}
 			rebuildWidgets();
 		}
 	}
 
 	private static Component fillLabel() {
 		return Component.literal("Fill /pay " + Money.format(DonutRaffle.get().owed())).withStyle(ChatFormatting.GREEN);
-	}
-
-	private void setText(EditBox box, String text) {
-		if (box == null) {
-			return;
-		}
-
-		syncing = true;
-
-		try {
-			box.setValue(text);
-		} finally {
-			syncing = false;
-		}
 	}
 
 	/** Saves a change made by typing here without rebuilding (which would drop the text box focus). */
@@ -383,6 +330,7 @@ public class RaffleScreen extends BaseScreen {
 
 		// Left column labels (the widgets sit next to them).
 		g.item(Prizes.stack(r), lx, y + 2);
+		g.text(font, Hud.fitWidth(font, Prizes.name(r), 112 - 20), lx + 19, y + 6, Hud.GOLD, true);
 		y += ROW;
 		g.text(font, "Price", lx, y + 6, Hud.TEXT, false);
 		g.text(font, "Win %", lx + 116, y + 6, Raffle.parseWinnerPercent(winText, r.spots) < 0 ? Hud.RED : Hud.TEXT, false);

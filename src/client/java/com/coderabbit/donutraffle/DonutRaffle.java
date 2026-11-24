@@ -76,11 +76,15 @@ public final class DonutRaffle {
 		pending = s;
 	}
 
-	public static void tick(boolean menuPressed) {
+	public static void tick(boolean menuPressed, boolean togglePressed) {
 		if (pending != null) {
 			Screen s = pending;
 			pending = null;
 			Mc.setScreen(s);
+		}
+
+		if (togglePressed) {
+			setEnabled(!raffle.enabled);
 		}
 
 		if (menuPressed && Mc.screen() == null) {
@@ -88,9 +92,21 @@ public final class DonutRaffle {
 		}
 	}
 
+	/** Turns the whole mod on or off. Off: payments are not read and the bar is hidden. */
+	public static void setEnabled(boolean on) {
+		raffle.enabled = on;
+		changed();
+		info(on ? Component.literal("On: tracking payments.").withStyle(ChatFormatting.GREEN)
+				: Component.literal("Off: payments are not tracked and the bar is hidden.").withStyle(ChatFormatting.RED));
+	}
+
 	// ------------------------------------------------------------------ chat in
 
 	public static void onGameMessage(Component message) {
+		if (!raffle.enabled) {
+			return;
+		}
+
 		String plain = ChatFormatting.stripFormatting(message.getString());
 		PayLine.Pay pay = PayLine.parse(plain);
 
@@ -243,7 +259,8 @@ public final class DonutRaffle {
 		int moved = r.newRound();
 		changed();
 		info(Component.literal("New round open: " + Prizes.name(r) + ", " + Money.format(r.price) + " a spot"
-				+ (moved > 0 ? ". " + moved + " from the queue took spots 1-" + moved : "") + ".").withStyle(ChatFormatting.GREEN));
+				+ (moved == 1 ? ". 1 from the queue took spot 1" : moved > 1 ? ". " + moved + " from the queue took spots 1-" + moved : "")
+				+ ".").withStyle(ChatFormatting.GREEN));
 	}
 
 	/** Names of the players holding spots, for command suggestions. */

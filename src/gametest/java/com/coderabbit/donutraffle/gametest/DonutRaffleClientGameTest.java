@@ -1,6 +1,8 @@
 package com.coderabbit.donutraffle.gametest;
 
 import com.coderabbit.donutraffle.DonutRaffle;
+import com.coderabbit.donutraffle.Hud;
+import com.coderabbit.donutraffle.HudEditScreen;
 import com.coderabbit.donutraffle.ItemPickerScreen;
 import com.coderabbit.donutraffle.RaffleScreen;
 import com.coderabbit.donutraffle.SettingsScreen;
@@ -39,6 +41,7 @@ public class DonutRaffleClientGameTest implements FabricClientGameTest {
 			r.winnerPercent = 90;
 			r.taxPercent = 2;
 			r.hud = true;
+			r.enabled = true;
 			DonutRaffle.changed();
 		});
 
@@ -206,7 +209,7 @@ public class DonutRaffleClientGameTest implements FabricClientGameTest {
 			context.runOnClient(client -> Mc.setScreen(null));
 			context.waitTicks(2);
 
-			// ---- prize worth: an elytra worth $81M, 9 spots, 90% -> $10M a spot
+			// ---- the price only changes when typed: spots and Win % leave it alone
 			command(context, "raffle new");
 			command(context, "raffle prize elytra");
 			command(context, "raffle spots 9");
@@ -215,26 +218,84 @@ public class DonutRaffleClientGameTest implements FabricClientGameTest {
 			context.waitForScreen(RaffleScreen.class);
 			context.waitTicks(2);
 			context.runOnClient(client -> {
-				EditBox worth = box("Prize worth");
-				worth.setValue("81m");
+				box("Spot price").setValue("10m");
 				Raffle r = DonutRaffle.get();
-				check(Math.abs(r.price - 10_000_000) < C, "worth $81M should make $10M spots, got " + r.price);
-				check(box("Spot price").getValue().equals("10m"), "price box should show 10m, got " + box("Spot price").getValue());
+				check(Math.abs(r.price - 10_000_000) < C, "typing 10m should set $10M spots, got " + r.price);
 				box("Winner gets % of the pot").setValue("81");
-				check(Math.abs(r.price - 11_111_111.11) < 0.01, "81% should make spots $11.11M, got " + r.price);
+				check(Math.abs(r.price - 10_000_000) < C, "Win % must not change the price, got " + r.price);
 				box("Winner gets % of the pot").setValue("90");
 			});
 			context.waitTicks(3);
-			context.takeScreenshot("raffle-11-menu-prize-worth");
+			context.takeScreenshot("raffle-11-menu-jackpot-title");
 			command(context, "raffle spots 5");
-			context.runOnClient(client -> check(Math.abs(DonutRaffle.get().price - 18_000_000) < C, "5 spots should make $18M spots"));
-			context.runOnClient(client -> {
-				box("Spot price").setValue("3m");
-				Raffle r = DonutRaffle.get();
-				check(r.price == 3_000_000 && r.prizeValue == 0, "typing a price should stop following the worth");
-			});
+			context.runOnClient(client -> check(Math.abs(DonutRaffle.get().price - 10_000_000) < C, "spots must not change the price"));
 			context.runOnClient(client -> Mc.setScreen(null));
 			context.waitTicks(2);
+
+			// ---- off: payments are ignored and the bar is hidden; on again: they count
+			command(context, "raffle off");
+			int before = context.computeOnClient(client -> DonutRaffle.get().filled());
+			pay(context, server, "Offguy paid you $10M.");
+			context.runOnClient(client -> {
+				Raffle r = DonutRaffle.get();
+				check(!r.enabled && r.filled() == before && r.spotsOf("Offguy") == 0, "payments must be ignored while off");
+			});
+			context.takeScreenshot("raffle-12-off-no-bar");
+			command(context, "raffle on");
+			pay(context, server, "Onguy paid you $10M.");
+			context.runOnClient(client -> check(DonutRaffle.get().spotsOf("Onguy") == 1, "payments should count again when on"));
+
+			// ---- bar editor: drag, scroll, right-click, arrows, reset, all with the real mouse and keys
+			command(context, "raffle hud");
+			context.waitForScreen(HudEditScreen.class);
+			context.waitTicks(2);
+			context.takeScreenshot("raffle-13-hud-editor");
+			double gs = context.computeOnClient(client -> client.getWindow().getGuiScale());
+			double[] bar = context.computeOnClient(client -> {
+				Hud.Place p = Hud.place(client.font, DonutRaffle.get(), Mc.screen().width, Mc.screen().height);
+				return new double[]{p.x() + p.w() / 2.0, p.y() + p.h() / 2.0};
+			});
+			context.getInput().setCursorPos(bar[0] * gs, bar[1] * gs);
+			context.waitTicks(1);
+			context.getInput().holdMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(1);
+			context.getInput().moveCursor(-60 * gs, 80 * gs);
+			context.waitTicks(1);
+			context.getInput().moveCursor(-20 * gs, 20 * gs);
+			context.waitTicks(1);
+			context.getInput().releaseMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(2);
+			context.runOnClient(client -> {
+				Raffle r = DonutRaffle.get();
+				check(r.hudX < 0.49F && r.hudY > 60, "dragging should move the bar down-left, got x=" + r.hudX + " y=" + r.hudY);
+			});
+			context.getInput().scroll(-3);
+			context.waitTicks(2);
+			context.runOnClient(client -> check(DonutRaffle.get().hudScale < 0.99F, "scrolling down should shrink the bar, got " + DonutRaffle.get().hudScale));
+			int yBefore = context.computeOnClient(client -> DonutRaffle.get().hudY);
+			context.getInput().pressKey(InputConstants.KEY_DOWN);
+			context.waitTicks(2);
+			context.runOnClient(client -> check(DonutRaffle.get().hudY == yBefore + 1, "arrow down should nudge 1px"));
+			context.takeScreenshot("raffle-14-hud-editor-moved");
+			double[] bar2 = context.computeOnClient(client -> {
+				Hud.Place p = Hud.place(client.font, DonutRaffle.get(), Mc.screen().width, Mc.screen().height);
+				return new double[]{p.x() + p.w() / 2.0, p.y() + p.h() / 2.0};
+			});
+			context.getInput().setCursorPos(bar2[0] * gs, bar2[1] * gs);
+			context.waitTicks(1);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_RIGHT);
+			context.waitTicks(2);
+			context.runOnClient(client -> check(!DonutRaffle.get().hud, "right-click should hide the bar"));
+			context.takeScreenshot("raffle-15-hud-editor-hidden");
+			context.clickScreenButton("Reset sizes");
+			context.waitTicks(2);
+			context.runOnClient(client -> {
+				Raffle r = DonutRaffle.get();
+				check(r.hud && r.hudX == 0.5F && r.hudY == 2 && r.hudScale == 1.0F, "Reset sizes should put the bar back");
+			});
+			context.clickScreenButton("Done");
+			context.waitTicks(2);
+			context.runOnClient(client -> check(Mc.screen() == null, "Done should close the editor"));
 		}
 	}
 

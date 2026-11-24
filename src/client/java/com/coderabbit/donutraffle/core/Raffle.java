@@ -71,15 +71,13 @@ public final class Raffle {
 
 	// ----------------------------------------------------------------- settings
 
+	/** The whole mod. Off: payments are ignored and the bar is hidden. */
+	public boolean enabled = true;
+
 	/** Registry id of the item shown as the prize, e.g. "minecraft:elytra". */
 	public String prizeItem = "minecraft:elytra";
 	/** Optional text instead of the item's own name ("Elytra + 64 rockets"). */
 	public String prizeLabel = "";
-	/**
-	 * What the prize is worth (0 = not used). When set, the spot price follows from it: the winner's
-	 * share of a full pot equals the worth, so price = worth / (spots x winner%).
-	 */
-	public double prizeValue;
 	public double price = 1_000_000;
 	public int spots = MAX_SPOTS;
 	public double winnerPercent = 90;
@@ -93,6 +91,8 @@ public final class Raffle {
 	public float hudScale = 1.0F;
 	/** Pixels from the top edge, to move the bar below a boss bar. */
 	public int hudY = 2;
+	/** Where the bar's centre sits across the screen, 0 = left edge, 1 = right edge. */
+	public float hudX = 0.5F;
 
 	// ----------------------------------------------------------------- round state
 
@@ -169,7 +169,8 @@ public final class Raffle {
 		}
 
 		hudScale = (float) clamp(hudScale, 0.5, 2.0);
-		hudY = (int) clamp(hudY, 0, 200);
+		hudY = (int) clamp(hudY, 0, 2000);
+		hudX = (float) clamp(hudX, 0, 1);
 		winnerPercent = clamp(winnerPercent, 0, 100);
 		taxPercent = clamp(taxPercent, 0, 100);
 	}
@@ -198,24 +199,6 @@ public final class Raffle {
 			return v >= 0 && v <= 100 && !Double.isNaN(v) ? v : -1;
 		} catch (NumberFormatException e) {
 			return -1;
-		}
-	}
-
-	/** The spot price that makes a full pot's winner share equal the prize worth. */
-	public static double priceForValue(double value, int spots, double winnerPercent) {
-		if (value <= 0 || spots <= 0 || winnerPercent <= 0) {
-			return -1;
-		}
-
-		return Money.cents(value / (spots * winnerPercent / 100.0));
-	}
-
-	/** Recomputes the price from the prize worth, if one is set. Call after spots or winner % change. */
-	public void applyPrizeValue() {
-		double p = priceForValue(prizeValue, spots, winnerPercent);
-
-		if (p > 0) {
-			price = p;
 		}
 	}
 
@@ -548,7 +531,6 @@ public final class Raffle {
 
 		spots = n;
 		normalize();
-		applyPrizeValue();
 		return true;
 	}
 

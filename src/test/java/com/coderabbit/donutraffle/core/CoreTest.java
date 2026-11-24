@@ -188,18 +188,15 @@ class CoreTest {
 	}
 
 	@Test
-	void prizeWorthSetsThePrice() {
-		// An elytra worth $81M, 9 spots, winner gets 90%: $10M a spot.
-		assertEquals(10_000_000, Raffle.priceForValue(81_000_000, 9, 90), C);
+	void priceOnlyChangesWhenYouSetIt() {
+		// The price is never worked out for you: changing spots or the winner's share leaves it alone.
 		Raffle r = new Raffle();
-		r.prizeValue = 81_000_000;
-		r.applyPrizeValue();
-		assertEquals(10_000_000, r.price, C);
-		assertEquals(81_000_000, Raffle.share(r.fullPot(), r.winnerPercent), C);
-		// Fewer spots: dearer spots, same share.
+		r.price = 10_000_000;
 		assertTrue(r.setSpots(5));
-		assertEquals(18_000_000, r.price, C);
-		assertEquals(-1, Raffle.priceForValue(0, 9, 90), C);
+		r.winnerPercent = 81;
+		assertEquals(10_000_000, r.price, C);
+		assertEquals(5, r.spots);
+		assertEquals(50_000_000, r.fullPot(), C);
 	}
 
 	@Test

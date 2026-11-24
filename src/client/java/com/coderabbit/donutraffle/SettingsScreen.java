@@ -63,12 +63,9 @@ public class SettingsScreen extends BaseScreen {
 				.build());
 		y += 22;
 
-		addRenderableWidget(Button.builder(Component.literal("-"), b -> scale(-0.1F)).bounds(x, y, 20, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("+"), b -> scale(0.1F)).bounds(x + 104, y, 20, 20).build());
-		y += 22;
-
-		addRenderableWidget(Button.builder(Component.literal("-"), b -> moveY(-4)).bounds(x, y, 20, 20).build());
-		addRenderableWidget(Button.builder(Component.literal("+"), b -> moveY(4)).bounds(x + 104, y, 20, 20).build());
+		addRenderableWidget(Button.builder(Component.literal("Move / resize bar..."), b -> Mc.setScreen(new HudEditScreen(this)))
+				.bounds(x, y, 124, 20)
+				.build());
 		y += 22;
 
 		addRenderableWidget(Button.builder(Component.literal("Owed-back list: " + (r.trackExtras ? "on" : "off")), b -> {
@@ -105,7 +102,6 @@ public class SettingsScreen extends BaseScreen {
 		Raffle r = DonutRaffle.get();
 		r.winnerPercent = w;
 		r.taxPercent = t;
-		r.applyPrizeValue();
 		DonutRaffle.changed();
 	}
 
@@ -116,20 +112,6 @@ public class SettingsScreen extends BaseScreen {
 		} catch (NumberFormatException e) {
 			return -1;
 		}
-	}
-
-	private void scale(float d) {
-		Raffle r = DonutRaffle.get();
-		r.hudScale = Math.round((r.hudScale + d) * 10) / 10F;
-		r.normalize();
-		DonutRaffle.changed();
-	}
-
-	private void moveY(int d) {
-		Raffle r = DonutRaffle.get();
-		r.hudY += d;
-		r.normalize();
-		DonutRaffle.changed();
 	}
 
 	@Override
@@ -145,11 +127,7 @@ public class SettingsScreen extends BaseScreen {
 		y += 26;
 		g.text(font, "Jackpot bar at the top", lx, y, Hud.TEXT, false);
 		y += 22;
-		g.text(font, "Bar size", lx, y, Hud.TEXT, false);
-		g.centered(font, Math.round(r.hudScale * 100) + "%", cx + 72, y, Hud.TEXT);
-		y += 22;
-		g.text(font, "Bar height from top", lx, y, Hud.TEXT, false);
-		g.centered(font, r.hudY + " px", cx + 72, y, Hud.TEXT);
+		g.text(font, "Bar position and size (" + Math.round(r.hudScale * 100) + "%)", lx, y, Hud.TEXT, false);
 		y += 22;
 		g.text(font, "Keep money that buys no spot", lx, y, Hud.TEXT, false);
 		y += 22;

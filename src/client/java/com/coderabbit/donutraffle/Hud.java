@@ -42,18 +42,37 @@ public final class Hud {
 	public static void render(Gfx g) {
 		Raffle r = DonutRaffle.get();
 
-		if (!r.hud || Mc.hudHidden() || Mc.screen() instanceof com.coderabbit.donutraffle.mc.BaseScreen) {
+		if (!r.enabled || !r.hud || Mc.hudHidden() || Mc.screen() instanceof com.coderabbit.donutraffle.mc.BaseScreen) {
 			return;
 		}
 
 		Minecraft mc = Minecraft.getInstance();
 		Font font = mc.font;
-		float scale = fit(font, r, g.width(), r.hudScale);
-		int sw = Math.round(g.width() / scale);
+		drawAt(g, font, r, place(font, r, g.width(), g.height()));
+	}
 
+	/** Where the bar is on screen, in GUI pixels: top-left corner, size, and the scale it is drawn at. */
+	public record Place(float scale, int x, int y, int w, int h) {
+		public boolean contains(double mx, double my) {
+			return mx >= x && mx < x + w && my >= y && my < y + h;
+		}
+	}
+
+	/** The bar's place from its saved centre (hudX) and top (hudY), kept fully on screen. */
+	public static Place place(Font font, Raffle r, int screenW, int screenH) {
+		float s = fit(font, r, screenW, r.hudScale);
+		int w = Math.round((barWidth(font, r) + 2) * s);
+		int h = Math.round((height(r) + 2) * s);
+		int cx = Math.round(r.hudX * screenW);
+		int x = Math.max(0, Math.min(cx - w / 2, screenW - w));
+		int y = Math.max(0, Math.min(r.hudY, screenH - h));
+		return new Place(s, x, y, w, h);
+	}
+
+	public static void drawAt(Gfx g, Font font, Raffle r, Place p) {
 		g.push();
-		g.scale(scale);
-		draw(g, font, r, sw / 2, Math.round(r.hudY / scale), false);
+		g.scale(p.scale());
+		draw(g, font, r, Math.round((p.x() + p.w() / 2f) / p.scale()), Math.round(p.y() / p.scale()) + 1, false);
 		g.pop();
 	}
 
@@ -67,7 +86,8 @@ public final class Hud {
 	}
 
 	private static String title(Raffle r) {
-		return Prizes.name(r).toUpperCase(java.util.Locale.ROOT) + " JACKPOT";
+		// Just "JACKPOT": the prize shows as the item icon next to it.
+		return "JACKPOT";
 	}
 
 	private static String priceText(Raffle r) {
@@ -210,6 +230,10 @@ public final class Hud {
 		}
 	}
 	static String footer(Raffle r) {
+		if (!r.enabled) {
+			return "RAFFLE OFF  -  payments are not tracked";
+		}
+
 		if (r.paid) {
 			return "PAID  -  " + r.winnerName() + " won " + Money.format(r.paidOut);
 		}
@@ -235,6 +259,10 @@ public final class Hud {
 	}
 
 	static int footColor(Raffle r) {
+		if (!r.enabled) {
+			return RED;
+		}
+
 		if (r.paid) {
 			return MONEY;
 		}
