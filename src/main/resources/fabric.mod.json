@@ -1,0 +1,23 @@
+{
+	"schemaVersion": 1,
+	"id": "donutraffle",
+	"version": "${version}",
+	"name": "Donut Raffle",
+	"description": "A pay-to-enter jackpot for DonutSMP: payments fill numbered spots shown at the top of the screen, you pick the winner in-game, and the mod works out the payout (90% of the pot, minus the 2% /pay tax).",
+	"authors": [
+		"CodeRabbit-byte"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.coderabbit.donutraffle.mc.DonutRaffleClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

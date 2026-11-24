@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "donutraffle-test",
+	"version": "1.0.0",
+	"name": "Donut Raffle Test",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"com.coderabbit.donutraffle.gametest.DonutRaffleClientGameTest"
+		]
+	},
+	"depends": {
+		"donutraffle": "*"
+	}
+}
